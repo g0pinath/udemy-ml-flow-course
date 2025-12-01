@@ -9,5 +9,5 @@ scipy>=1.10.0
 matplotlib>=3.7.0
 seaborn>=0.12.0
 
-# Azure ML SDK (optional - for remote tracking)
-# azureml-sdk>=1.50.0  # Uncomment if using Azure ML workspace
+# Azure ML SDK (for remote tracking)
+azureml-sdk>=1.50.0
