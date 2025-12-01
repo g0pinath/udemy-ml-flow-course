@@ -1,0 +1,14 @@
+artifact_uri: file:C:/Users/Gopi.Thiruvengadam/Documents/GitHub/udemy/ml-flow-course/ai-code/mlruns/111818631712643724/d69c2dddd70d4f0c90e81835b822f7a3/artifacts
+end_time: 1764033899313
+entry_point_name: ''
+experiment_id: '111818631712643724'
+lifecycle_stage: active
+run_id: d69c2dddd70d4f0c90e81835b822f7a3
+run_name: elasticnet_optimization_main
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1764033886610
+status: 3
+tags: []
+user_id: Gopi.Thiruvengadam

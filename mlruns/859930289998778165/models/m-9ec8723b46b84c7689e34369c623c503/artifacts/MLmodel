@@ -1,0 +1,28 @@
+artifact_path: file:C:/Users/Gopi.Thiruvengadam/Documents/GitHub/udemy/ml-flow-course/ai-code/mlruns/859930289998778165/models/m-9ec8723b46b84c7689e34369c623c503/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.13.9
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.7.2
+is_signature_from_type_hint: false
+mlflow_version: 3.6.0
+model_id: m-9ec8723b46b84c7689e34369c623c503
+model_size_bytes: 613
+model_uuid: m-9ec8723b46b84c7689e34369c623c503
+prompts: null
+run_id: 159469c121aa4d3f9a836c4c863a41b2
+signature:
+  inputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float64", "shape": [-1, 11]}}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float64", "shape": [-1]}}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2025-11-25 02:16:04.209525'

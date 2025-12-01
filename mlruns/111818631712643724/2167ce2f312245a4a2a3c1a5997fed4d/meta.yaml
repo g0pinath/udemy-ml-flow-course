@@ -1,0 +1,14 @@
+artifact_uri: file:C:/Users/Gopi.Thiruvengadam/Documents/GitHub/udemy/ml-flow-course/ai-code/mlruns/111818631712643724/2167ce2f312245a4a2a3c1a5997fed4d/artifacts
+end_time: 1764033892592
+entry_point_name: ''
+experiment_id: '111818631712643724'
+lifecycle_stage: active
+run_id: 2167ce2f312245a4a2a3c1a5997fed4d
+run_name: baseline_model
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1764033886750
+status: 3
+tags: []
+user_id: Gopi.Thiruvengadam

@@ -1,0 +1,14 @@
+artifact_uri: file:C:/Users/Gopi.Thiruvengadam/Documents/GitHub/udemy/ml-flow-course/ai-code/mlruns/859930289998778165/4c4d97ac51dd46acbc0ebcb7fbdabdaa/artifacts
+end_time: 1764036987510
+entry_point_name: ''
+experiment_id: '859930289998778165'
+lifecycle_stage: active
+run_id: 4c4d97ac51dd46acbc0ebcb7fbdabdaa
+run_name: exp4_strong_regularization
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1764036983021
+status: 3
+tags: []
+user_id: Gopi.Thiruvengadam

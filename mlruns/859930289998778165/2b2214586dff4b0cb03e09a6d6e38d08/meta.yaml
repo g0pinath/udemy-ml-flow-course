@@ -1,0 +1,14 @@
+artifact_uri: file:C:/Users/Gopi.Thiruvengadam/Documents/GitHub/udemy/ml-flow-course/ai-code/mlruns/859930289998778165/2b2214586dff4b0cb03e09a6d6e38d08/artifacts
+end_time: 1764036973156
+entry_point_name: ''
+experiment_id: '859930289998778165'
+lifecycle_stage: active
+run_id: 2b2214586dff4b0cb03e09a6d6e38d08
+run_name: exp4_ridge_heavy
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1764036968579
+status: 3
+tags: []
+user_id: Gopi.Thiruvengadam

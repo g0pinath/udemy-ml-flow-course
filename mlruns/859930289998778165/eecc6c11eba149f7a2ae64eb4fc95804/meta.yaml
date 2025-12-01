@@ -1,0 +1,14 @@
+artifact_uri: file:C:/Users/Gopi.Thiruvengadam/Documents/GitHub/udemy/ml-flow-course/ai-code/mlruns/859930289998778165/eecc6c11eba149f7a2ae64eb4fc95804/artifacts
+end_time: 1764036952633
+entry_point_name: ''
+experiment_id: '859930289998778165'
+lifecycle_stage: active
+run_id: eecc6c11eba149f7a2ae64eb4fc95804
+run_name: exp1_coarse_grid_search
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1764036935379
+status: 3
+tags: []
+user_id: Gopi.Thiruvengadam

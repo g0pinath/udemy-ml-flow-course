@@ -1,0 +1,10 @@
+artifact_location: file:C:/Users/Gopi.Thiruvengadam/Documents/GitHub/udemy/ml-flow-course/ai-code/mlruns/859930289998778165/models/m-5c300ac38b584179a2a3742b0b8d9f58/artifacts
+creation_timestamp: 1764036983401
+experiment_id: '859930289998778165'
+last_updated_timestamp: 1764036987470
+model_id: m-5c300ac38b584179a2a3742b0b8d9f58
+model_type: null
+name: model
+source_run_id: 4c4d97ac51dd46acbc0ebcb7fbdabdaa
+status: 2
+status_message: null
