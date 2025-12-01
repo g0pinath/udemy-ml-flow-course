@@ -1,0 +1,216 @@
+# Azure DevOps Pipeline for MLflow Experiments
+# This pipeline runs wine quality prediction experiments and publishes results
+
+trigger:
+  branches:
+    include:
+    - main
+    - develop
+  paths:
+    include:
+    - ai-code/*
+    - data/*
+    - azure-pipelines/mlflow-experiments.yml
+
+pr:
+  branches:
+    include:
+    - main
+    - develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  pythonVersion: '3.11'  # Using 3.11 for better compatibility with Azure ML SDK
+  workingDirectory: '$(System.DefaultWorkingDirectory)'
+  
+stages:
+- stage: Setup
+  displayName: 'Setup Environment'
+  jobs:
+  - job: ValidateEnvironment
+    displayName: 'Validate and Setup Python Environment'
+    steps:
+    - task: UsePythonVersion@0
+      displayName: 'Use Python $(pythonVersion)'
+      inputs:
+        versionSpec: '$(pythonVersion)'
+        addToPath: true
+    
+    - script: |
+        python --version
+        pip --version
+      displayName: 'Display Python and Pip Versions'
+    
+    - script: |
+        python -m pip install --upgrade pip
+        pip install -r ai-code/requirements.txt
+      displayName: 'Install Python Dependencies'
+      workingDirectory: '$(workingDirectory)'
+    
+    - script: |
+        pip list
+      displayName: 'List Installed Packages'
+
+- stage: RunExperiments
+  displayName: 'Run MLflow Experiments'
+  dependsOn: Setup
+  jobs:
+  - job: OptimizeElasticNet
+    displayName: 'Run ElasticNet Optimization Experiment'
+    steps:
+    - task: UsePythonVersion@0
+      displayName: 'Use Python $(pythonVersion)'
+      inputs:
+        versionSpec: '$(pythonVersion)'
+        addToPath: true
+    
+    - script: |
+        python -m pip install --upgrade pip
+        pip install -r ai-code/requirements.txt
+      displayName: 'Install Dependencies'
+      workingDirectory: '$(workingDirectory)'
+    
+    - script: |
+        cd ai-code
+        python optimize_elasticnet.py
+      displayName: 'Run ElasticNet Optimization'
+      env:
+        USE_AZURE_ML: 'False'  # Use local tracking in pipeline
+    
+    - task: PublishPipelineArtifact@1
+      displayName: 'Publish ElasticNet MLflow Artifacts'
+      inputs:
+        targetPath: '$(workingDirectory)/ai-code/mlruns'
+        artifact: 'mlflow-elasticnet-results'
+        publishLocation: 'pipeline'
+  
+  - job: RunExperimentSeries
+    displayName: 'Run Experiment Series (5 Strategies)'
+    dependsOn: OptimizeElasticNet
+    steps:
+    - task: UsePythonVersion@0
+      displayName: 'Use Python $(pythonVersion)'
+      inputs:
+        versionSpec: '$(pythonVersion)'
+        addToPath: true
+    
+    - script: |
+        python -m pip install --upgrade pip
+        pip install -r ai-code/requirements.txt
+      displayName: 'Install Dependencies'
+      workingDirectory: '$(workingDirectory)'
+    
+    - script: |
+        cd ai-code
+        python experiment_series.py
+      displayName: 'Run Experiment Series'
+      env:
+        USE_AZURE_ML: 'False'  # Use local tracking in pipeline
+    
+    - task: PublishPipelineArtifact@1
+      displayName: 'Publish Experiment Series MLflow Artifacts'
+      inputs:
+        targetPath: '$(workingDirectory)/ai-code/mlruns'
+        artifact: 'mlflow-experiment-series-results'
+        publishLocation: 'pipeline'
+
+- stage: PublishResults
+  displayName: 'Publish Experiment Results'
+  dependsOn: RunExperiments
+  jobs:
+  - job: GenerateReports
+    displayName: 'Generate Experiment Reports'
+    steps:
+    - task: UsePythonVersion@0
+      displayName: 'Use Python $(pythonVersion)'
+      inputs:
+        versionSpec: '$(pythonVersion)'
+        addToPath: true
+    
+    - script: |
+        python -m pip install --upgrade pip
+        pip install mlflow pandas matplotlib seaborn
+      displayName: 'Install MLflow and Reporting Dependencies'
+    
+    - task: DownloadPipelineArtifact@2
+      displayName: 'Download ElasticNet Results'
+      inputs:
+        artifact: 'mlflow-elasticnet-results'
+        path: '$(workingDirectory)/results/elasticnet'
+    
+    - task: DownloadPipelineArtifact@2
+      displayName: 'Download Experiment Series Results'
+      inputs:
+        artifact: 'mlflow-experiment-series-results'
+        path: '$(workingDirectory)/results/experiment-series'
+    
+    - script: |
+        cd results/elasticnet
+        python -m mlflow ui --port 5000 --backend-store-uri file:./mlruns &
+        sleep 5
+        echo "MLflow UI started for ElasticNet results"
+      displayName: 'Start MLflow UI (ElasticNet)'
+      continueOnError: true
+    
+    - script: |
+        cd results/experiment-series
+        python -m mlflow ui --port 5001 --backend-store-uri file:./mlruns &
+        sleep 5
+        echo "MLflow UI started for Experiment Series results"
+      displayName: 'Start MLflow UI (Experiment Series)'
+      continueOnError: true
+    
+    - script: |
+        python azure-pipelines/scripts/generate_summary_report.py
+      displayName: 'Generate Summary Report'
+      continueOnError: true
+    
+    - task: PublishPipelineArtifact@1
+      displayName: 'Publish Summary Report'
+      inputs:
+        targetPath: '$(workingDirectory)/reports'
+        artifact: 'experiment-summary-reports'
+        publishLocation: 'pipeline'
+      condition: succeededOrFailed()
+    
+    - task: PublishTestResults@2
+      displayName: 'Publish Experiment Metrics as Test Results'
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: '**/experiment-results.xml'
+        searchFolder: '$(workingDirectory)/reports'
+        mergeTestResults: true
+        failTaskOnFailedTests: false
+        testRunTitle: 'MLflow Experiment Results'
+      condition: succeededOrFailed()
+
+- stage: CleanupAndArchive
+  displayName: 'Cleanup and Archive'
+  dependsOn: PublishResults
+  condition: always()
+  jobs:
+  - job: ArchiveResults
+    displayName: 'Archive Experiment Results'
+    steps:
+    - task: DownloadPipelineArtifact@2
+      displayName: 'Download All Artifacts'
+      inputs:
+        path: '$(workingDirectory)/all-results'
+    
+    - task: ArchiveFiles@2
+      displayName: 'Archive MLflow Results'
+      inputs:
+        rootFolderOrFile: '$(workingDirectory)/all-results'
+        includeRootFolder: true
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/mlflow-experiments-$(Build.BuildNumber).zip'
+        replaceExistingArchive: true
+    
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Archived Results'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)/mlflow-experiments-$(Build.BuildNumber).zip'
+        ArtifactName: 'mlflow-experiments-archive'
+        publishLocation: 'Container'

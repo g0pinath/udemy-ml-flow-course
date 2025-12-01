@@ -1,0 +1,54 @@
+# Quick Test Pipeline for MLflow Experiments
+# Simplified pipeline for testing - runs only one experiment
+
+trigger: none  # Manual trigger only
+
+pr: none  # No PR trigger
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  pythonVersion: '3.11'
+
+jobs:
+- job: QuickTest
+  displayName: 'Quick Experiment Test'
+  timeoutInMinutes: 15
+  
+  steps:
+  - task: UsePythonVersion@0
+    displayName: 'Setup Python $(pythonVersion)'
+    inputs:
+      versionSpec: '$(pythonVersion)'
+      addToPath: true
+  
+  - script: |
+      python --version
+      python -m pip install --upgrade pip
+      pip install mlflow scikit-learn pandas numpy scipy
+    displayName: 'Install Dependencies'
+  
+  - script: |
+      cd ai-code
+      python experiment_series.py
+    displayName: 'Run Experiment Series (Test)'
+    continueOnError: true
+  
+  - script: |
+      cd ai-code
+      ls -la mlruns/ || echo "No mlruns directory found"
+    displayName: 'Check MLflow Outputs'
+  
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publish Test Results'
+    inputs:
+      targetPath: '$(System.DefaultWorkingDirectory)/ai-code/mlruns'
+      artifact: 'test-mlflow-results'
+      publishLocation: 'pipeline'
+    condition: succeededOrFailed()
+  
+  - script: |
+      echo "Pipeline completed!"
+      echo "Download artifacts to view MLflow results"
+    displayName: 'Summary'
