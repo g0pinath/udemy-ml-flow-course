@@ -577,8 +577,9 @@ def main():
     workspace = setup_mlflow_tracking()
     mlflow.set_experiment(EXPERIMENT_NAME)
     
-    # Load data
-    filepath = "C:/Users/Gopi.Thiruvengadam/Documents/GitHub/udemy/ml-flow-course/data/red-wine-quality.csv"
+    # Load data from g0pinath/data folder
+    data_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'data')
+    filepath = os.path.join(data_dir, 'red-wine-quality.csv')
     data = load_and_prepare_data(filepath)
     if data is None:
         return

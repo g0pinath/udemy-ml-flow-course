@@ -75,9 +75,10 @@ def train_and_register_best_model():
     mlflow.set_tracking_uri(tracking_uri)
     print(f"[OK] MLflow tracking URI set")
     
-    # Load data
+    # Load data from g0pinath/data folder
     print("\n[OK] Loading data...")
-    data_path = "C:/Users/Gopi.Thiruvengadam/Documents/GitHub/udemy/ml-flow-course/data/red-wine-quality.csv"
+    data_dir = os.path.join(os.path.dirname(__file__), '..', '..', 'data')
+    data_path = os.path.join(data_dir, 'red-wine-quality.csv')
     data = pd.read_csv(data_path)
     
     # Drop the unnamed index column if it exists
