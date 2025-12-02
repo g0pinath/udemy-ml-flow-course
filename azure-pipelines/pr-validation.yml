@@ -56,7 +56,7 @@ jobs:
   - script: |
       cd ai-code
       # Run with reduced iterations for PR validation
-      timeout 300 python experiment_series.py || echo "Experiment timed out (expected for PR)"
+      timeout 300 python wine_quality_comprehensive.py || echo "Experiment timed out (expected for PR)"
     displayName: 'Quick Experiment Test'
     continueOnError: true
   

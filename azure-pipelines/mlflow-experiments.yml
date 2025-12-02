@@ -57,8 +57,8 @@ stages:
   displayName: 'Run MLflow Experiments'
   dependsOn: Setup
   jobs:
-  - job: OptimizeElasticNet
-    displayName: 'Run ElasticNet Optimization Experiment'
+  - job: ComprehensiveExperiments
+    displayName: 'Run Comprehensive Experiment Suite'
     steps:
     - task: UsePythonVersion@0
       displayName: 'Use Python $(pythonVersion)'
@@ -74,46 +74,16 @@ stages:
     
     - script: |
         cd ai-code
-        python optimize_elasticnet.py
-      displayName: 'Run ElasticNet Optimization'
+        python wine_quality_comprehensive.py
+      displayName: 'Run Comprehensive Experiment Suite'
       env:
         USE_AZURE_ML: 'False'  # Use local tracking in pipeline
     
     - task: PublishPipelineArtifact@1
-      displayName: 'Publish ElasticNet MLflow Artifacts'
+      displayName: 'Publish MLflow Comprehensive Results'
       inputs:
         targetPath: '$(workingDirectory)/ai-code/mlruns'
-        artifact: 'mlflow-elasticnet-results'
-        publishLocation: 'pipeline'
-  
-  - job: RunExperimentSeries
-    displayName: 'Run Experiment Series (5 Strategies)'
-    dependsOn: OptimizeElasticNet
-    steps:
-    - task: UsePythonVersion@0
-      displayName: 'Use Python $(pythonVersion)'
-      inputs:
-        versionSpec: '$(pythonVersion)'
-        addToPath: true
-    
-    - script: |
-        python -m pip install --upgrade pip
-        pip install -r ai-code/requirements.txt
-      displayName: 'Install Dependencies'
-      workingDirectory: '$(workingDirectory)'
-    
-    - script: |
-        cd ai-code
-        python experiment_series.py
-      displayName: 'Run Experiment Series'
-      env:
-        USE_AZURE_ML: 'False'  # Use local tracking in pipeline
-    
-    - task: PublishPipelineArtifact@1
-      displayName: 'Publish Experiment Series MLflow Artifacts'
-      inputs:
-        targetPath: '$(workingDirectory)/ai-code/mlruns'
-        artifact: 'mlflow-experiment-series-results'
+        artifact: 'mlflow-comprehensive-results'
         publishLocation: 'pipeline'
 
 - stage: PublishResults
@@ -135,31 +105,17 @@ stages:
       displayName: 'Install MLflow and Reporting Dependencies'
     
     - task: DownloadPipelineArtifact@2
-      displayName: 'Download ElasticNet Results'
+      displayName: 'Download Comprehensive Results'
       inputs:
-        artifact: 'mlflow-elasticnet-results'
-        path: '$(workingDirectory)/results/elasticnet'
-    
-    - task: DownloadPipelineArtifact@2
-      displayName: 'Download Experiment Series Results'
-      inputs:
-        artifact: 'mlflow-experiment-series-results'
-        path: '$(workingDirectory)/results/experiment-series'
+        artifact: 'mlflow-comprehensive-results'
+        path: '$(workingDirectory)/results/comprehensive'
     
     - script: |
-        cd results/elasticnet
+        cd results/comprehensive
         python -m mlflow ui --port 5000 --backend-store-uri file:./mlruns &
         sleep 5
-        echo "MLflow UI started for ElasticNet results"
-      displayName: 'Start MLflow UI (ElasticNet)'
-      continueOnError: true
-    
-    - script: |
-        cd results/experiment-series
-        python -m mlflow ui --port 5001 --backend-store-uri file:./mlruns &
-        sleep 5
-        echo "MLflow UI started for Experiment Series results"
-      displayName: 'Start MLflow UI (Experiment Series)'
+        echo "MLflow UI started for comprehensive results"
+      displayName: 'Start MLflow UI'
       continueOnError: true
     
     - script: |

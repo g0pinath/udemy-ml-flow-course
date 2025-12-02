@@ -31,8 +31,8 @@ jobs:
   
   - script: |
       cd ai-code
-      python experiment_series.py
-    displayName: 'Run Experiment Series (Test)'
+      python wine_quality_comprehensive.py
+    displayName: 'Run Comprehensive Experiment Suite (Test)'
     continueOnError: true
   
   - script: |
