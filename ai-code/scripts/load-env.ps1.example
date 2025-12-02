@@ -1,0 +1,71 @@
+# Azure ML Authentication - Environment Variable Loader
+# 
+# COPY THIS FILE TO load-env.ps1 AND UPDATE WITH YOUR CREDENTIALS
+# DO NOT COMMIT load-env.ps1 TO VERSION CONTROL!
+#
+# This script sets up environment variables for Azure ML authentication
+# Works in both local development and Azure Pipelines
+
+# Detect if running in Azure Pipelines
+$isAzurePipeline = $env:SYSTEM_TEAMFOUNDATIONCOLLECTIONURI -ne $null
+
+if ($isAzurePipeline) {
+    Write-Host "Running in Azure Pipelines - using library variables..." -ForegroundColor Green
+    
+    # Validate required variables from library group 'mlflow'
+    $requiredVars = @('TF_VAR_AZURE_TENANT_ID', 'TF_VAR_AZURE_CLIENT_ID', 'TF_VAR_AZURE_CLIENT_SECRET', 'TF_VAR_AZURE_SUBSCRIPTION_ID')
+    $missingVars = @()
+    
+    foreach ($var in $requiredVars) {
+        if ([string]::IsNullOrEmpty((Get-Item -Path "env:$var" -ErrorAction SilentlyContinue).Value)) {
+            $missingVars += $var
+        }
+    }
+    
+    if ($missingVars.Count -gt 0) {
+        Write-Host "ERROR: Missing required variables from library group 'mlflow':" -ForegroundColor Red
+        $missingVars | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
+        exit 1
+    }
+    
+    # Convert TF_VAR_AZURE_* to AZURE_* for Python compatibility
+    $env:AZURE_TENANT_ID = $env:TF_VAR_AZURE_TENANT_ID
+    $env:AZURE_CLIENT_ID = $env:TF_VAR_AZURE_CLIENT_ID
+    $env:AZURE_CLIENT_SECRET = $env:TF_VAR_AZURE_CLIENT_SECRET
+    $env:AZURE_SUBSCRIPTION_ID = $env:TF_VAR_AZURE_SUBSCRIPTION_ID
+    
+    Write-Host "  Set AZURE_TENANT_ID from TF_VAR_AZURE_TENANT_ID" -ForegroundColor Gray
+    Write-Host "  Set AZURE_CLIENT_ID from TF_VAR_AZURE_CLIENT_ID" -ForegroundColor Gray
+    Write-Host "  Set AZURE_CLIENT_SECRET from TF_VAR_AZURE_CLIENT_SECRET" -ForegroundColor Gray
+    Write-Host "  Set AZURE_SUBSCRIPTION_ID from TF_VAR_AZURE_SUBSCRIPTION_ID" -ForegroundColor Gray
+    
+} else {
+    Write-Host "Running locally - using hardcoded development credentials..." -ForegroundColor Cyan
+    
+    # LOCAL DEVELOPMENT CREDENTIALS - UPDATE THESE VALUES
+    $env:AZURE_TENANT_ID = "YOUR_TENANT_ID_HERE"
+    $env:AZURE_CLIENT_ID = "YOUR_CLIENT_ID_HERE"
+    $env:AZURE_CLIENT_SECRET = "YOUR_CLIENT_SECRET_HERE"
+    $env:AZURE_SUBSCRIPTION_ID = "YOUR_SUBSCRIPTION_ID_HERE"
+    
+    # Set TF_VAR_* versions for Terraform compatibility
+    $env:TF_VAR_AZURE_TENANT_ID = $env:AZURE_TENANT_ID
+    $env:TF_VAR_AZURE_CLIENT_ID = $env:AZURE_CLIENT_ID
+    $env:TF_VAR_AZURE_CLIENT_SECRET = $env:AZURE_CLIENT_SECRET
+    $env:TF_VAR_AZURE_SUBSCRIPTION_ID = $env:AZURE_SUBSCRIPTION_ID
+    
+    Write-Host "  Set AZURE_TENANT_ID" -ForegroundColor Gray
+    Write-Host "  Set AZURE_CLIENT_ID" -ForegroundColor Gray
+    Write-Host "  Set AZURE_CLIENT_SECRET" -ForegroundColor Gray
+    Write-Host "  Set AZURE_SUBSCRIPTION_ID" -ForegroundColor Gray
+    Write-Host "  Set TF_VAR_AZURE_* variables" -ForegroundColor Gray
+}
+
+# Set UTF-8 encoding for Python output (emoji support)
+$env:PYTHONIOENCODING = "utf-8"
+Write-Host "  Set PYTHONIOENCODING = utf-8" -ForegroundColor Gray
+
+Write-Host "`nEnvironment variables loaded successfully!" -ForegroundColor Green
+Write-Host "You can now run: python experiments/wine_quality_comprehensive.py" -ForegroundColor Yellow
+Write-Host "Or run experiments: python scripts/cleanup_experiments.py --list" -ForegroundColor Yellow
+Write-Host "Or use Terraform: terraform plan/apply" -ForegroundColor Yellow

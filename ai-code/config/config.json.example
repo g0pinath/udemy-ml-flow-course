@@ -1,0 +1,9 @@
+{
+  "mlflow": {
+    "tracking_uri": "http://localhost:5000",
+    "experiment_name": "wine-quality-optimization"
+  },
+  "data": {
+    "path": "../../data/wine-quality.csv"
+  }
+}

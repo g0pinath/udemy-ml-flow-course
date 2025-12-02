@@ -1,0 +1,13 @@
+"""
+Azure ML Workspace Configuration Template
+
+Copy this file to azure_config.py and fill in your values.
+DO NOT commit azure_config.py to version control!
+"""
+
+AZURE_ML_CONFIG = {
+    'subscription_id': 'YOUR_SUBSCRIPTION_ID_HERE',
+    'resource_group': 'YOUR_RESOURCE_GROUP_HERE',
+    'workspace_name': 'YOUR_WORKSPACE_NAME_HERE',
+    'location': 'YOUR_AZURE_REGION_HERE'  # e.g., 'eastus', 'australiaeast'
+}

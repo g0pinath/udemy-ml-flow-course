@@ -8,7 +8,9 @@ trigger:
     - develop
   paths:
     include:
-    - ai-code/*
+    - ai-code/experiments/*
+    - ai-code/scripts/*
+    - ai-code/config/*
     - data/*
     - azure-pipelines/mlflow-experiments.yml
 
@@ -22,8 +24,11 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  pythonVersion: '3.11'  # Using 3.11 for better compatibility with Azure ML SDK
-  workingDirectory: '$(System.DefaultWorkingDirectory)'
+- name: pythonVersion
+  value: '3.11'  # Using 3.11 for better compatibility with Azure ML SDK
+- name: workingDirectory
+  value: '$(System.DefaultWorkingDirectory)'
+- group: mlflow  # Azure ML service principal credentials
   
 stages:
 - stage: Setup
@@ -45,7 +50,7 @@ stages:
     
     - script: |
         python -m pip install --upgrade pip
-        pip install -r ai-code/requirements.txt
+        pip install -r ai-code/config/requirements.txt
       displayName: 'Install Python Dependencies'
       workingDirectory: '$(workingDirectory)'
     
@@ -68,105 +73,42 @@ stages:
     
     - script: |
         python -m pip install --upgrade pip
-        pip install -r ai-code/requirements.txt
+        pip install -r ai-code/config/requirements.txt
       displayName: 'Install Dependencies'
       workingDirectory: '$(workingDirectory)'
     
-    - script: |
+    - pwsh: |
         cd ai-code
-        python wine_quality_comprehensive.py
-      displayName: 'Run Comprehensive Experiment Suite'
+        ./scripts/load-env.ps1
+        python experiments/wine_quality_comprehensive.py
+      displayName: 'Run Comprehensive Experiment Suite with Azure ML'
       env:
-        USE_AZURE_ML: 'False'  # Use local tracking in pipeline
+        TF_VAR_AZURE_TENANT_ID: $(TF_VAR_AZURE_TENANT_ID)
+        TF_VAR_AZURE_CLIENT_ID: $(TF_VAR_AZURE_CLIENT_ID)
+        TF_VAR_AZURE_CLIENT_SECRET: $(TF_VAR_AZURE_CLIENT_SECRET)
+        TF_VAR_AZURE_SUBSCRIPTION_ID: $(TF_VAR_AZURE_SUBSCRIPTION_ID)
     
-    - task: PublishPipelineArtifact@1
-      displayName: 'Publish MLflow Comprehensive Results'
-      inputs:
-        targetPath: '$(workingDirectory)/ai-code/mlruns'
-        artifact: 'mlflow-comprehensive-results'
-        publishLocation: 'pipeline'
+    - script: |
+        echo "Experiments logged to Azure ML workspace"
+        echo "View results at: https://ml.azure.com"
+      displayName: 'Display Azure ML Results Link'
 
 - stage: PublishResults
   displayName: 'Publish Experiment Results'
   dependsOn: RunExperiments
   jobs:
   - job: GenerateReports
-    displayName: 'Generate Experiment Reports'
+    displayName: 'Generate Experiment Summary'
     steps:
-    - task: UsePythonVersion@0
-      displayName: 'Use Python $(pythonVersion)'
-      inputs:
-        versionSpec: '$(pythonVersion)'
-        addToPath: true
-    
     - script: |
-        python -m pip install --upgrade pip
-        pip install mlflow pandas matplotlib seaborn
-      displayName: 'Install MLflow and Reporting Dependencies'
-    
-    - task: DownloadPipelineArtifact@2
-      displayName: 'Download Comprehensive Results'
-      inputs:
-        artifact: 'mlflow-comprehensive-results'
-        path: '$(workingDirectory)/results/comprehensive'
-    
-    - script: |
-        cd results/comprehensive
-        python -m mlflow ui --port 5000 --backend-store-uri file:./mlruns &
-        sleep 5
-        echo "MLflow UI started for comprehensive results"
-      displayName: 'Start MLflow UI'
-      continueOnError: true
-    
-    - script: |
-        python azure-pipelines/scripts/generate_summary_report.py
-      displayName: 'Generate Summary Report'
-      continueOnError: true
-    
-    - task: PublishPipelineArtifact@1
-      displayName: 'Publish Summary Report'
-      inputs:
-        targetPath: '$(workingDirectory)/reports'
-        artifact: 'experiment-summary-reports'
-        publishLocation: 'pipeline'
-      condition: succeededOrFailed()
-    
-    - task: PublishTestResults@2
-      displayName: 'Publish Experiment Metrics as Test Results'
-      inputs:
-        testResultsFormat: 'JUnit'
-        testResultsFiles: '**/experiment-results.xml'
-        searchFolder: '$(workingDirectory)/reports'
-        mergeTestResults: true
-        failTaskOnFailedTests: false
-        testRunTitle: 'MLflow Experiment Results'
-      condition: succeededOrFailed()
-
-- stage: CleanupAndArchive
-  displayName: 'Cleanup and Archive'
-  dependsOn: PublishResults
-  condition: always()
-  jobs:
-  - job: ArchiveResults
-    displayName: 'Archive Experiment Results'
-    steps:
-    - task: DownloadPipelineArtifact@2
-      displayName: 'Download All Artifacts'
-      inputs:
-        path: '$(workingDirectory)/all-results'
-    
-    - task: ArchiveFiles@2
-      displayName: 'Archive MLflow Results'
-      inputs:
-        rootFolderOrFile: '$(workingDirectory)/all-results'
-        includeRootFolder: true
-        archiveType: 'zip'
-        archiveFile: '$(Build.ArtifactStagingDirectory)/mlflow-experiments-$(Build.BuildNumber).zip'
-        replaceExistingArchive: true
-    
-    - task: PublishBuildArtifacts@1
-      displayName: 'Publish Archived Results'
-      inputs:
-        PathtoPublish: '$(Build.ArtifactStagingDirectory)/mlflow-experiments-$(Build.BuildNumber).zip'
-        ArtifactName: 'mlflow-experiments-archive'
-        publishLocation: 'Container'
+        echo "================================================"
+        echo "MLflow Experiments Complete!"
+        echo "================================================"
+        echo "All experiment results are logged to Azure ML workspace"
+        echo ""
+        echo "View results at:"
+        echo "https://ml.azure.com"
+        echo ""
+        echo "Navigate to: Experiments → wine-quality-comprehensive-optimization"
+        echo "================================================"
+      displayName: 'Display Summary'
