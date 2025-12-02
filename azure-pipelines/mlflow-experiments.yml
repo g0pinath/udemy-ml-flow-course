@@ -94,9 +94,49 @@ stages:
         echo "View results at: https://ml.azure.com"
       displayName: 'Display Azure ML Results Link'
 
+- stage: RegisterModel
+  displayName: 'Train and Register Best Model'
+  dependsOn: RunExperiments
+  jobs:
+  - job: TrainAndRegister
+    displayName: 'Train with Best Parameters and Register Model'
+    steps:
+    - task: UsePythonVersion@0
+      displayName: 'Use Python $(pythonVersion)'
+      inputs:
+        versionSpec: '$(pythonVersion)'
+        addToPath: true
+    
+    - script: |
+        python -m pip install --upgrade pip
+        pip install -r ai-code/config/requirements.txt
+      displayName: 'Install Dependencies'
+      workingDirectory: '$(workingDirectory)'
+    
+    - script: |
+        cd ai-code
+        python experiments/train_and_register_best.py
+      displayName: 'Train and Register Best Model as my_ver_1'
+      env:
+        TF_VAR_AZURE_TENANT_ID: $(TF_VAR_AZURE_TENANT_ID)
+        TF_VAR_AZURE_CLIENT_ID: $(TF_VAR_AZURE_CLIENT_ID)
+        TF_VAR_AZURE_CLIENT_SECRET: $(TF_VAR_AZURE_CLIENT_SECRET)
+        TF_VAR_AZURE_SUBSCRIPTION_ID: $(TF_VAR_AZURE_SUBSCRIPTION_ID)
+        AZURE_RESOURCE_GROUP: $(AZURE_RESOURCE_GROUP)
+        AZURE_WORKSPACE_NAME: $(AZURE_WORKSPACE_NAME)
+    
+    - script: |
+        echo "================================================"
+        echo "Model Registration Complete!"
+        echo "================================================"
+        echo "Model 'my_ver_1' has been registered in Azure ML"
+        echo "View in Model Registry: https://ml.azure.com"
+        echo "================================================"
+      displayName: 'Display Model Registration Summary'
+
 - stage: PublishResults
   displayName: 'Publish Experiment Results'
-  dependsOn: RunExperiments
+  dependsOn: RegisterModel
   jobs:
   - job: GenerateReports
     displayName: 'Generate Experiment Summary'
