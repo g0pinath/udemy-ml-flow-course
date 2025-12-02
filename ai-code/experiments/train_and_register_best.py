@@ -25,13 +25,16 @@ def train_and_register_best_model():
     print("TRAINING AND REGISTERING BEST MODEL")
     print("="*70)
     
-    # Setup Azure ML
-    tenant_id = os.getenv('AZURE_TENANT_ID')
-    client_id = os.getenv('AZURE_CLIENT_ID')
-    client_secret = os.getenv('AZURE_CLIENT_SECRET')
+    # Setup Azure ML (try TF_VAR_* first, fallback to AZURE_*)
+    tenant_id = os.getenv('TF_VAR_AZURE_TENANT_ID') or os.getenv('AZURE_TENANT_ID')
+    client_id = os.getenv('TF_VAR_AZURE_CLIENT_ID') or os.getenv('AZURE_CLIENT_ID')
+    client_secret = os.getenv('TF_VAR_AZURE_CLIENT_SECRET') or os.getenv('AZURE_CLIENT_SECRET')
+    subscription_id = os.getenv('TF_VAR_AZURE_SUBSCRIPTION_ID') or os.getenv('AZURE_SUBSCRIPTION_ID')
     
     if not all([tenant_id, client_id, client_secret]):
         print("[ERROR] Missing Azure credentials. Run load-env.ps1 first.")
+        print("Required: TF_VAR_AZURE_TENANT_ID, TF_VAR_AZURE_CLIENT_ID, TF_VAR_AZURE_CLIENT_SECRET")
+        print("Or: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET")
         return
     
     print("\n[OK] Connecting to Azure ML workspace...")
@@ -42,7 +45,7 @@ def train_and_register_best_model():
     )
     
     ws = Workspace(
-        subscription_id=AZURE_ML_CONFIG['subscription_id'],
+        subscription_id=subscription_id or AZURE_ML_CONFIG['subscription_id'],
         resource_group=AZURE_ML_CONFIG['resource_group'],
         workspace_name=AZURE_ML_CONFIG['workspace_name'],
         auth=auth

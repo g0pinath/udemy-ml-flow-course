@@ -77,16 +77,15 @@ stages:
       displayName: 'Install Dependencies'
       workingDirectory: '$(workingDirectory)'
     
-    - pwsh: |
+    - script: |
         cd ai-code
-        ./scripts/load-env.ps1
         python experiments/wine_quality_comprehensive.py
       displayName: 'Run Comprehensive Experiment Suite with Azure ML'
       env:
-        TF_VAR_AZURE_TENANT_ID: $(TF_VAR_AZURE_TENANT_ID)
-        TF_VAR_AZURE_CLIENT_ID: $(TF_VAR_AZURE_CLIENT_ID)
-        TF_VAR_AZURE_CLIENT_SECRET: $(TF_VAR_AZURE_CLIENT_SECRET)
-        TF_VAR_AZURE_SUBSCRIPTION_ID: $(TF_VAR_AZURE_SUBSCRIPTION_ID)
+        AZURE_TENANT_ID: $(TF_VAR_AZURE_TENANT_ID)
+        AZURE_CLIENT_ID: $(TF_VAR_AZURE_CLIENT_ID)
+        AZURE_CLIENT_SECRET: $(TF_VAR_AZURE_CLIENT_SECRET)
+        AZURE_SUBSCRIPTION_ID: $(TF_VAR_AZURE_SUBSCRIPTION_ID)
     
     - script: |
         echo "Experiments logged to Azure ML workspace"

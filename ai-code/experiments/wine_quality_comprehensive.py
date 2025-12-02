@@ -58,15 +58,17 @@ def setup_mlflow_tracking():
     """
     print("\nConfiguring Azure ML workspace for MLflow tracking...")
     
-    # Check for service principal environment variables
-    tenant_id = os.getenv('AZURE_TENANT_ID')
-    client_id = os.getenv('AZURE_CLIENT_ID')
-    client_secret = os.getenv('AZURE_CLIENT_SECRET')
+    # Check for service principal environment variables (try TF_VAR_* first, fallback to AZURE_*)
+    tenant_id = os.getenv('TF_VAR_AZURE_TENANT_ID') or os.getenv('AZURE_TENANT_ID')
+    client_id = os.getenv('TF_VAR_AZURE_CLIENT_ID') or os.getenv('AZURE_CLIENT_ID')
+    client_secret = os.getenv('TF_VAR_AZURE_CLIENT_SECRET') or os.getenv('AZURE_CLIENT_SECRET')
+    subscription_id = os.getenv('TF_VAR_AZURE_SUBSCRIPTION_ID') or os.getenv('AZURE_SUBSCRIPTION_ID')
     
     if not all([tenant_id, client_id, client_secret]):
         raise EnvironmentError(
             "Missing required environment variables. Run scripts/load-env.ps1 first.\n"
-            "Required: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET"
+            "Required: TF_VAR_AZURE_TENANT_ID, TF_VAR_AZURE_CLIENT_ID, TF_VAR_AZURE_CLIENT_SECRET\n"
+            "Or: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET"
         )
     
     print("[OK] Using Service Principal authentication from environment variables")
@@ -76,9 +78,9 @@ def setup_mlflow_tracking():
         service_principal_password=client_secret
     )
     
-    # Connect to workspace
+    # Connect to workspace (use subscription_id from env var if available)
     ws = Workspace(
-        subscription_id=AZURE_ML_CONFIG['subscription_id'],
+        subscription_id=subscription_id or AZURE_ML_CONFIG['subscription_id'],
         resource_group=AZURE_ML_CONFIG['resource_group'],
         workspace_name=AZURE_ML_CONFIG['workspace_name'],
         auth=auth
@@ -677,7 +679,7 @@ def main():
         print(f"\n[OK] All experiments completed successfully!")
         print(f"[OK] Run ID: {mlflow.active_run().info.run_id}")
         if workspace:
-            tenant_id = os.getenv('AZURE_TENANT_ID', '20f4aea2-36b7-45bf-bb52-d91200496ae8')
+            tenant_id = os.getenv('AZURE_TENANT_ID')
             workspace_id = f"/subscriptions/{workspace.subscription_id}/resourcegroups/{workspace.resource_group}/providers/Microsoft.MachineLearningServices/workspaces/{workspace.name}"
             portal_url = f"https://ml.azure.com?tid={tenant_id}&wsid={workspace_id}"
             print(f"[OK] View results in Azure ML Studio: {portal_url}")

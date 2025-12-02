@@ -24,8 +24,6 @@ print("Checking Azure ML Configuration")
 print("="*70)
 
 try:
-    import os
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
     from azure_config import AZURE_ML_CONFIG
     print("✓ azure_config.py imported successfully")
     
