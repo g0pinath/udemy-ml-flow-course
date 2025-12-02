@@ -33,7 +33,12 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
 from azureml.core import Workspace
 from azureml.core.authentication import ServicePrincipalAuthentication
-from azure_config import AZURE_ML_CONFIG
+
+# Try to import azure_config (available locally, not in pipeline)
+try:
+    from azure_config import AZURE_ML_CONFIG
+except ImportError:
+    AZURE_ML_CONFIG = None  # Will use environment variables instead
 
 # Suppress warnings for cleaner output
 warnings.filterwarnings("ignore")
@@ -78,11 +83,28 @@ def setup_mlflow_tracking():
         service_principal_password=client_secret
     )
     
-    # Connect to workspace (use subscription_id from env var if available)
+    # Connect to workspace (prefer env vars, fall back to config file)
+    # In pipeline: all values from environment variables
+    # Locally: can use azure_config.py for workspace details
+    resource_group = os.getenv('AZURE_RESOURCE_GROUP') or (AZURE_ML_CONFIG and AZURE_ML_CONFIG['resource_group'])
+    workspace_name = os.getenv('AZURE_WORKSPACE_NAME') or (AZURE_ML_CONFIG and AZURE_ML_CONFIG['workspace_name'])
+    
+    if not subscription_id:
+        subscription_id = AZURE_ML_CONFIG and AZURE_ML_CONFIG['subscription_id']
+    
+    if not all([subscription_id, resource_group, workspace_name]):
+        raise EnvironmentError(
+            "Missing workspace configuration. Provide via environment variables:\n"
+            "  TF_VAR_AZURE_SUBSCRIPTION_ID (or AZURE_SUBSCRIPTION_ID)\n"
+            "  AZURE_RESOURCE_GROUP\n"
+            "  AZURE_WORKSPACE_NAME\n"
+            "Or configure azure_config.py for local development."
+        )
+    
     ws = Workspace(
-        subscription_id=subscription_id or AZURE_ML_CONFIG['subscription_id'],
-        resource_group=AZURE_ML_CONFIG['resource_group'],
-        workspace_name=AZURE_ML_CONFIG['workspace_name'],
+        subscription_id=subscription_id,
+        resource_group=resource_group,
+        workspace_name=workspace_name,
         auth=auth
     )
     print(f"[OK] Connected to workspace: {ws.name}")

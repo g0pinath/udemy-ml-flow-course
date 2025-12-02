@@ -82,10 +82,12 @@ stages:
         python experiments/wine_quality_comprehensive.py
       displayName: 'Run Comprehensive Experiment Suite with Azure ML'
       env:
-        AZURE_TENANT_ID: $(TF_VAR_AZURE_TENANT_ID)
-        AZURE_CLIENT_ID: $(TF_VAR_AZURE_CLIENT_ID)
-        AZURE_CLIENT_SECRET: $(TF_VAR_AZURE_CLIENT_SECRET)
-        AZURE_SUBSCRIPTION_ID: $(TF_VAR_AZURE_SUBSCRIPTION_ID)
+        TF_VAR_AZURE_TENANT_ID: $(TF_VAR_AZURE_TENANT_ID)
+        TF_VAR_AZURE_CLIENT_ID: $(TF_VAR_AZURE_CLIENT_ID)
+        TF_VAR_AZURE_CLIENT_SECRET: $(TF_VAR_AZURE_CLIENT_SECRET)
+        TF_VAR_AZURE_SUBSCRIPTION_ID: $(TF_VAR_AZURE_SUBSCRIPTION_ID)
+        AZURE_RESOURCE_GROUP: $(AZURE_RESOURCE_GROUP)
+        AZURE_WORKSPACE_NAME: $(AZURE_WORKSPACE_NAME)
     
     - script: |
         echo "Experiments logged to Azure ML workspace"

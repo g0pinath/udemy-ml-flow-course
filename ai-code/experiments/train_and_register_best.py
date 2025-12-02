@@ -13,7 +13,12 @@ from azureml.core import Workspace
 from azureml.core.authentication import ServicePrincipalAuthentication
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'config'))
-from azure_config import AZURE_ML_CONFIG
+
+# Try to import azure_config (available locally, not in pipeline)
+try:
+    from azure_config import AZURE_ML_CONFIG
+except ImportError:
+    AZURE_ML_CONFIG = None  # Will use environment variables instead
 
 # Best parameters from optimization
 BEST_ALPHA = 0.01
@@ -44,10 +49,23 @@ def train_and_register_best_model():
         service_principal_password=client_secret
     )
     
+    # Get workspace details (prefer env vars, fall back to config file)
+    resource_group = os.getenv('AZURE_RESOURCE_GROUP') or (AZURE_ML_CONFIG and AZURE_ML_CONFIG['resource_group'])
+    workspace_name = os.getenv('AZURE_WORKSPACE_NAME') or (AZURE_ML_CONFIG and AZURE_ML_CONFIG['workspace_name'])
+    
+    if not subscription_id:
+        subscription_id = AZURE_ML_CONFIG and AZURE_ML_CONFIG['subscription_id']
+    
+    if not all([subscription_id, resource_group, workspace_name]):
+        print("[ERROR] Missing workspace configuration.")
+        print("Provide via environment variables: TF_VAR_AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, AZURE_WORKSPACE_NAME")
+        print("Or configure azure_config.py for local development.")
+        return
+    
     ws = Workspace(
-        subscription_id=subscription_id or AZURE_ML_CONFIG['subscription_id'],
-        resource_group=AZURE_ML_CONFIG['resource_group'],
-        workspace_name=AZURE_ML_CONFIG['workspace_name'],
+        subscription_id=subscription_id,
+        resource_group=resource_group,
+        workspace_name=workspace_name,
         auth=auth
     )
     print(f"[OK] Connected to workspace: {ws.name}")
