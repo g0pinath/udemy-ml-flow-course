@@ -9,11 +9,17 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  pythonVersion: '3.10'
-  azureServiceConnection: 'azure-ml-connection'
-  modelName: 'wine-quality-elasticnet'
-  deploymentName: 'wine-quality-endpoint'
-  environment: 'production'  # Can be: dev, staging, production
+- group: mlflow  # Load Azure credentials from variable group
+- name: pythonVersion
+  value: '3.10'
+- name: azureServiceConnection
+  value: 'azure-ml-connection'
+- name: modelName
+  value: 'wine-quality-elasticnet'
+- name: deploymentName
+  value: 'wine-quality-endpoint'
+- name: environment
+  value: 'production'  # Can be: dev, staging, production
 
 stages:
 - stage: ValidateModel
