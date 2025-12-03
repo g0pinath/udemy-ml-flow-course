@@ -1,4 +1,3 @@
-$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
 type: command
 name: prep_wine_quality_data
 display_name: Prepare Wine Quality Data

@@ -1,4 +1,3 @@
-$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
 type: pipeline
 display_name: Wine Quality Training Pipeline with Hyperparameter Sweep
 description: End-to-end pipeline for wine quality prediction with automated hyperparameter tuning
