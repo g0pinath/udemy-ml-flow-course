@@ -12,8 +12,6 @@ variables:
 - group: mlflow  # Load Azure credentials from variable group
 - name: pythonVersion
   value: '3.10'
-- name: azureServiceConnection
-  value: 'azure-ml-connection'
 - name: modelName
   value: 'wine-quality-elasticnet'
 - name: deploymentName
@@ -37,23 +35,25 @@ stages:
         pip install azureml-core mlflow
       displayName: 'Install dependencies'
 
-    - task: AzureCLI@2
+    - script: |
+        # Login with service principal
+        az login --service-principal \
+          --username $(TF_VAR_AZURE_CLIENT_ID) \
+          --password $(TF_VAR_AZURE_CLIENT_SECRET) \
+          --tenant $(TF_VAR_AZURE_TENANT_ID)
+        
+        az account set --subscription $(TF_VAR_AZURE_SUBSCRIPTION_ID)
+        az extension add -n ml -y
+        
+        # Get latest model version
+        MODEL_VERSION=$(az ml model list --name $(modelName) \
+          --resource-group $(AZURE_RESOURCE_GROUP) \
+          --workspace-name $(AZURE_WORKSPACE_NAME) \
+          --query "[0].version" -o tsv)
+        
+        echo "Latest model version: $MODEL_VERSION"
+        echo "##vso[task.setvariable variable=modelVersion;isOutput=true]$MODEL_VERSION"
       displayName: 'Verify Model Exists'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          az extension add -n ml -y
-          
-          # Get latest model version
-          MODEL_VERSION=$(az ml model list --name $(modelName) \
-            --resource-group $(AZURE_RESOURCE_GROUP) \
-            --workspace-name $(AZURE_WORKSPACE_NAME) \
-            --query "[0].version" -o tsv)
-          
-          echo "Latest model version: $MODEL_VERSION"
-          echo "##vso[task.setvariable variable=modelVersion;isOutput=true]$MODEL_VERSION"
       name: modelInfo
 
 - stage: DeployToStaging
@@ -73,34 +73,31 @@ stages:
         pip install azureml-core azure-ai-ml
       displayName: 'Install Azure ML SDK'
 
-    - task: AzureCLI@2
+    - script: |
+        # Login with service principal
+        az login --service-principal \
+          --username $(TF_VAR_AZURE_CLIENT_ID) \
+          --password $(TF_VAR_AZURE_CLIENT_SECRET) \
+          --tenant $(TF_VAR_AZURE_TENANT_ID)
+        
+        az account set --subscription $(TF_VAR_AZURE_SUBSCRIPTION_ID)
+        az extension add -n ml -y
+        
+        ENDPOINT_NAME="wine-quality-staging"
+        
+        # Create endpoint if it doesn't exist
+        az ml online-endpoint create \
+          --name $ENDPOINT_NAME \
+          --resource-group $(AZURE_RESOURCE_GROUP) \
+          --workspace-name $(AZURE_WORKSPACE_NAME) || true
+        
+        echo "Staging endpoint ready: $ENDPOINT_NAME"
       displayName: 'Create/Update Staging Endpoint'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          az extension add -n ml -y
-          
-          ENDPOINT_NAME="wine-quality-staging"
-          
-          # Create endpoint if it doesn't exist
-          az ml online-endpoint create \
-            --name $ENDPOINT_NAME \
-            --resource-group $(AZURE_RESOURCE_GROUP) \
-            --workspace-name $(AZURE_WORKSPACE_NAME) || true
-          
-          echo "Staging endpoint ready: $ENDPOINT_NAME"
 
-    - task: AzureCLI@2
+    - script: |
+        echo "Model deployment to staging would happen here"
+        echo "Deploying model: $(modelName)"
       displayName: 'Deploy Model to Staging'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          echo "Model deployment to staging would happen here"
-          echo "Deploying model: $(modelName)"
 
 - stage: TestStaging
   displayName: 'Test Staging Deployment'
@@ -118,17 +115,20 @@ stages:
         pip install requests pandas
       displayName: 'Install test dependencies'
 
-    - task: AzureCLI@2
+    - script: |
+        # Login with service principal
+        az login --service-principal \
+          --username $(TF_VAR_AZURE_CLIENT_ID) \
+          --password $(TF_VAR_AZURE_CLIENT_SECRET) \
+          --tenant $(TF_VAR_AZURE_TENANT_ID)
+        
+        az account set --subscription $(TF_VAR_AZURE_SUBSCRIPTION_ID)
+        
+        # Test the deployed model with sample data
+        echo "Running smoke tests against staging endpoint..."
+        echo "Testing wine quality predictions..."
+        # Add actual endpoint testing here
       displayName: 'Test Staging Endpoint'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          # Test the deployed model with sample data
-          echo "Running smoke tests against staging endpoint..."
-          echo "Testing wine quality predictions..."
-          # Add actual endpoint testing here
 
 - stage: ApprovalGate
   displayName: 'Manual Approval'
@@ -161,25 +161,27 @@ stages:
         pip install azureml-core azure-ai-ml
       displayName: 'Install Azure ML SDK'
 
-    - task: AzureCLI@2
+    - script: |
+        # Login with service principal
+        az login --service-principal \
+          --username $(TF_VAR_AZURE_CLIENT_ID) \
+          --password $(TF_VAR_AZURE_CLIENT_SECRET) \
+          --tenant $(TF_VAR_AZURE_TENANT_ID)
+        
+        az account set --subscription $(TF_VAR_AZURE_SUBSCRIPTION_ID)
+        az extension add -n ml -y
+        
+        ENDPOINT_NAME="wine-quality-prod"
+        
+        # Create/update production endpoint
+        az ml online-endpoint create \
+          --name $ENDPOINT_NAME \
+          --resource-group $(AZURE_RESOURCE_GROUP) \
+          --workspace-name $(AZURE_WORKSPACE_NAME) || true
+        
+        echo "Production deployment completed"
+        echo "Endpoint: $ENDPOINT_NAME"
       displayName: 'Deploy to Production Endpoint'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          az extension add -n ml -y
-          
-          ENDPOINT_NAME="wine-quality-prod"
-          
-          # Create/update production endpoint
-          az ml online-endpoint create \
-            --name $ENDPOINT_NAME \
-            --resource-group $(AZURE_RESOURCE_GROUP) \
-            --workspace-name $(AZURE_WORKSPACE_NAME) || true
-          
-          echo "Production deployment completed"
-          echo "Endpoint: $ENDPOINT_NAME"
 
     - script: |
         echo "==================================="
