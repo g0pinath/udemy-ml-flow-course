@@ -1,0 +1,57 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+display_name: Wine Quality Training Pipeline (Simple - Single Training)
+description: Simple pipeline for wine quality prediction with fixed hyperparameters (no sweep)
+
+settings:
+  default_compute: azureml:cpu-cluster
+  default_datastore: azureml:workspaceblobstore
+
+inputs:
+  raw_data:
+    type: uri_file
+    path: azureml://datastores/workspaceblobstore/paths/data/red-wine-quality.csv
+  alpha:
+    type: number
+    default: 0.1
+  l1_ratio:
+    type: number
+    default: 0.5
+  model_name:
+    type: string
+    default: wine-quality-elasticnet
+
+jobs:
+  # Step 1: Data Preparation
+  prep_data_job:
+    type: command
+    component: file:./components/prep-data/component.yml
+    inputs:
+      input_data: ${{parent.inputs.raw_data}}
+      test_split_ratio: 0.25
+      random_state: 42
+    outputs:
+      train_data:
+      test_data:
+  
+  # Step 2: Train Model with Fixed Hyperparameters
+  train_job:
+    type: command
+    component: file:./components/train-model/component.yml
+    inputs:
+      train_data: ${{parent.jobs.prep_data_job.outputs.train_data}}
+      test_data: ${{parent.jobs.prep_data_job.outputs.test_data}}
+      alpha: ${{parent.inputs.alpha}}
+      l1_ratio: ${{parent.inputs.l1_ratio}}
+      max_iter: 10000
+      random_state: 42
+    outputs:
+      model_output:
+  
+  # Step 3: Register Model
+  register_model_job:
+    type: command
+    component: file:./components/register-model/component.yml
+    inputs:
+      model_input_path: ${{parent.jobs.train_job.outputs.model_output}}
+      model_name: ${{parent.inputs.model_name}}

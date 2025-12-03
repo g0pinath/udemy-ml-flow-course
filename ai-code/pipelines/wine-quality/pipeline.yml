@@ -1,0 +1,76 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
+type: pipeline
+display_name: Wine Quality Training Pipeline with Hyperparameter Sweep
+description: End-to-end pipeline for wine quality prediction with automated hyperparameter tuning
+
+settings:
+  default_compute: azureml:cpu-cluster
+  default_datastore: azureml:workspaceblobstore
+
+inputs:
+  raw_data:
+    type: uri_file
+    path: azureml://datastores/workspaceblobstore/paths/data/red-wine-quality.csv
+  model_name:
+    type: string
+    default: wine-quality-elasticnet
+
+jobs:
+  # Step 1: Data Preparation
+  prep_data_job:
+    type: command
+    component: file:./components/prep-data/component.yml
+    inputs:
+      input_data: ${{parent.inputs.raw_data}}
+      test_split_ratio: 0.25
+      random_state: 42
+    outputs:
+      train_data:
+      test_data:
+  
+  # Step 2: Hyperparameter Tuning with Sweep
+  train_sweep_job:
+    type: sweep
+    sampling_algorithm: grid
+    trial: file:./components/train-model/component.yml
+    inputs:
+      train_data: ${{parent.jobs.prep_data_job.outputs.train_data}}
+      test_data: ${{parent.jobs.prep_data_job.outputs.test_data}}
+      max_iter: 10000
+      random_state: 42
+    outputs:
+      model_output:
+    
+    # Hyperparameter search space
+    search_space:
+      alpha:
+        type: choice
+        values: [0.0001, 0.001, 0.01, 0.05, 0.1, 0.3, 0.5, 0.7, 1.0, 1.5, 2.0]
+      l1_ratio:
+        type: choice
+        values: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    
+    # Optimization objective
+    objective:
+      primary_metric: test_rmse
+      goal: minimize
+    
+    # Execution limits
+    limits:
+      max_total_trials: 99  # 11 alpha × 9 l1_ratio
+      max_concurrent_trials: 5
+      timeout: 7200  # 2 hours
+    
+    # Early termination policy (stop poor performing runs early)
+    early_termination:
+      type: median_stopping
+      evaluation_interval: 1
+      delay_evaluation: 5
+  
+  # Step 3: Register Best Model
+  register_model_job:
+    type: command
+    component: file:./components/register-model/component.yml
+    inputs:
+      model_input_path: ${{parent.jobs.train_sweep_job.outputs.model_output}}
+      model_name: ${{parent.inputs.model_name}}

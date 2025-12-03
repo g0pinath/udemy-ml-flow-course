@@ -1,0 +1,38 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+name: prep_wine_quality_data
+display_name: Prepare Wine Quality Data
+version: 1.0.0
+description: Loads, cleans, scales, and splits wine quality data into train/test sets
+
+inputs:
+  input_data:
+    type: uri_file
+    description: Path to raw wine quality CSV file
+  test_split_ratio:
+    type: number
+    default: 0.25
+    description: Proportion of data for test set
+  random_state:
+    type: integer
+    default: 42
+    description: Random seed for reproducibility
+
+outputs:
+  train_data:
+    type: uri_folder
+    description: Prepared training data with scaled features
+  test_data:
+    type: uri_folder
+    description: Prepared test data with scaled features
+
+code: ./
+environment: azureml://registries/azureml/environments/sklearn-1.5/labels/latest
+
+command: >-
+  python prep_data.py
+  --input_data ${{inputs.input_data}}
+  --train_data ${{outputs.train_data}}
+  --test_data ${{outputs.test_data}}
+  --test_split_ratio ${{inputs.test_split_ratio}}
+  --random_state ${{inputs.random_state}}

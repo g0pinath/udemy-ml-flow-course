@@ -1,0 +1,48 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+name: train_wine_quality_model
+display_name: Train Wine Quality ElasticNet Model
+version: 1.0.0
+description: Trains ElasticNet regression model on wine quality data with configurable hyperparameters
+
+inputs:
+  train_data:
+    type: uri_folder
+    description: Prepared training data
+  test_data:
+    type: uri_folder
+    description: Prepared test data
+  alpha:
+    type: number
+    default: 1.0
+    description: Regularization strength (higher = more regularization)
+  l1_ratio:
+    type: number
+    default: 0.5
+    description: ElasticNet mixing parameter (0=Ridge, 1=Lasso, 0.5=Equal mix)
+  max_iter:
+    type: integer
+    default: 10000
+    description: Maximum number of iterations
+  random_state:
+    type: integer
+    default: 42
+    description: Random seed for reproducibility
+
+outputs:
+  model_output:
+    type: uri_folder
+    description: Trained model in MLflow format
+
+code: ./
+environment: azureml://registries/azureml/environments/sklearn-1.5/labels/latest
+
+command: >-
+  python train_model.py
+  --train_data ${{inputs.train_data}}
+  --test_data ${{inputs.test_data}}
+  --model_output ${{outputs.model_output}}
+  --alpha ${{inputs.alpha}}
+  --l1_ratio ${{inputs.l1_ratio}}
+  --max_iter ${{inputs.max_iter}}
+  --random_state ${{inputs.random_state}}

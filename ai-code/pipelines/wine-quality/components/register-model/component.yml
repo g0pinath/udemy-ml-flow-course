@@ -1,0 +1,23 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+name: register_wine_quality_model
+display_name: Register Wine Quality Model
+version: 1.0.0
+description: Registers trained model to Azure ML Model Registry with metadata
+
+inputs:
+  model_input_path:
+    type: uri_folder
+    description: Path to trained model (typically best model from sweep)
+  model_name:
+    type: string
+    default: wine-quality-elasticnet
+    description: Name for the registered model in Model Registry
+
+code: ./
+environment: azureml://registries/azureml/environments/sklearn-1.5/labels/latest
+
+command: >-
+  python register_model.py
+  --model_input_path ${{inputs.model_input_path}}
+  --model_name ${{inputs.model_name}}
