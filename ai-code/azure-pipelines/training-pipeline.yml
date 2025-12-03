@@ -18,11 +18,11 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  pythonVersion: '3.10'
-  azureServiceConnection: 'azure-ml-connection'  # Configure in Azure DevOps
-  azureMLWorkspace: '$(AZURE_WORKSPACE_NAME)'
-  resourceGroup: '$(AZURE_RESOURCE_GROUP)'
-  location: 'eastus'
+- group: mlflow  # Load Azure credentials from variable group
+- name: pythonVersion
+  value: '3.10'
+- name: location
+  value: 'eastus'
 
 stages:
 - stage: Setup
@@ -41,15 +41,17 @@ stages:
         pip install azureml-core azureml-mlflow mlflow scikit-learn pandas numpy scipy
       displayName: 'Install Azure ML SDK'
 
-    - task: AzureCLI@2
+    - script: |
+        # Login with service principal
+        az login --service-principal \
+          --username $(TF_VAR_AZURE_CLIENT_ID) \
+          --password $(TF_VAR_AZURE_CLIENT_SECRET) \
+          --tenant $(TF_VAR_AZURE_TENANT_ID)
+        
+        az account set --subscription $(TF_VAR_AZURE_SUBSCRIPTION_ID)
+        az extension add -n ml -y
+        az ml workspace show --name $(AZURE_WORKSPACE_NAME) --resource-group $(AZURE_RESOURCE_GROUP)
       displayName: 'Verify Azure ML Workspace'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          az extension add -n ml -y
-          az ml workspace show --name $(azureMLWorkspace) --resource-group $(resourceGroup)
 
 - stage: TrainModel
   displayName: 'Train Wine Quality Model'
@@ -69,26 +71,19 @@ stages:
         pip install azureml-core azureml-mlflow mlflow scikit-learn pandas numpy scipy
       displayName: 'Install dependencies'
 
-    - task: AzureCLI@2
+    - script: |
+        # Set environment variables for Azure ML authentication
+        export TF_VAR_AZURE_TENANT_ID=$(TF_VAR_AZURE_TENANT_ID)
+        export TF_VAR_AZURE_CLIENT_ID=$(TF_VAR_AZURE_CLIENT_ID)
+        export TF_VAR_AZURE_CLIENT_SECRET=$(TF_VAR_AZURE_CLIENT_SECRET)
+        export TF_VAR_AZURE_SUBSCRIPTION_ID=$(TF_VAR_AZURE_SUBSCRIPTION_ID)
+        export AZURE_RESOURCE_GROUP=$(AZURE_RESOURCE_GROUP)
+        export AZURE_WORKSPACE_NAME=$(AZURE_WORKSPACE_NAME)
+        
+        # Run the comprehensive wine quality experiment
+        cd experiments
+        python wine_quality_comprehensive.py
       displayName: 'Run Wine Quality Experiment'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          # Set environment variables for Azure ML authentication
-          export AZURE_TENANT_ID=$(az account show --query tenantId -o tsv)
-          export AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
-          export AZURE_RESOURCE_GROUP=$(resourceGroup)
-          export AZURE_WORKSPACE_NAME=$(azureMLWorkspace)
-          
-          # Run the comprehensive wine quality experiment
-          cd experiments
-          python wine_quality_comprehensive.py
-      env:
-        AZURE_TENANT_ID: $(AZURE_TENANT_ID)
-        AZURE_CLIENT_ID: $(AZURE_CLIENT_ID)
-        AZURE_CLIENT_SECRET: $(AZURE_CLIENT_SECRET)
 
     - script: |
         echo "Training completed successfully"
@@ -112,17 +107,20 @@ stages:
         pip install azureml-core mlflow
       displayName: 'Install dependencies'
 
-    - task: AzureCLI@2
+    - script: |
+        # Login with service principal
+        az login --service-principal \
+          --username $(TF_VAR_AZURE_CLIENT_ID) \
+          --password $(TF_VAR_AZURE_CLIENT_SECRET) \
+          --tenant $(TF_VAR_AZURE_TENANT_ID)
+        
+        az account set --subscription $(TF_VAR_AZURE_SUBSCRIPTION_ID)
+        
+        # Register the best model from the latest experiment run
+        # This would typically query MLflow for the best run and register it
+        echo "Model registration would happen here"
+        echo "Best model will be registered as wine-quality-elasticnet"
       displayName: 'Register Best Model'
-      inputs:
-        azureSubscription: '$(azureServiceConnection)'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          # Register the best model from the latest experiment run
-          # This would typically query MLflow for the best run and register it
-          echo "Model registration would happen here"
-          echo "Best model will be registered as wine-quality-elasticnet"
 
 - stage: NotifySuccess
   displayName: 'Notification'
