@@ -1,10 +1,10 @@
+$schema: https://azuremlschemas.azureedge.net/latest/pipelineJob.schema.json
 type: pipeline
 display_name: Wine Quality Training Pipeline (Simple - Single Training)
 description: Simple pipeline for wine quality prediction with fixed hyperparameters (no sweep)
 
 settings:
-  default_compute: azureml:cpu-cluster
-  default_datastore: azureml:workspaceblobstore
+  default_compute: cpu-cluster
 
 inputs:
   raw_data:
