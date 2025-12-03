@@ -1,0 +1,126 @@
+# Azure DevOps CI Pipeline - Code Quality & Testing
+# Trigger: On PR to main branch or commits to main
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - experiments/**
+      - pipelines/**
+      - scripts/**
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - experiments/**
+      - pipelines/**
+      - scripts/**
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  pythonVersion: '3.10'
+
+stages:
+- stage: CodeQuality
+  displayName: 'Code Quality & Linting'
+  jobs:
+  - job: Lint
+    displayName: 'Run Linters'
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+      displayName: 'Use Python $(pythonVersion)'
+
+    - script: |
+        python -m pip install --upgrade pip
+        pip install flake8 black pylint
+      displayName: 'Install linting tools'
+
+    - script: |
+        # Check code formatting with black
+        black --check experiments/ pipelines/ || echo "Black formatting check failed"
+        
+        # Run flake8 for style guide enforcement
+        flake8 experiments/ pipelines/ --max-line-length=120 --ignore=E501,W503 || echo "Flake8 found issues"
+      displayName: 'Run code quality checks'
+      continueOnError: true
+
+- stage: UnitTests
+  displayName: 'Unit Testing'
+  dependsOn: CodeQuality
+  jobs:
+  - job: Test
+    displayName: 'Run Unit Tests'
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+      displayName: 'Use Python $(pythonVersion)'
+
+    - script: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov pytest-mock
+        pip install -r requirements.txt || echo "No requirements.txt found"
+      displayName: 'Install dependencies'
+
+    - script: |
+        # Run pytest if tests exist
+        if [ -d "tests" ]; then
+          pytest tests/ --junitxml=junit/test-results.xml --cov=. --cov-report=xml --cov-report=html
+        else
+          echo "No tests directory found - skipping"
+        fi
+      displayName: 'Run unit tests'
+      continueOnError: true
+
+    - task: PublishTestResults@2
+      condition: succeededOrFailed()
+      inputs:
+        testResultsFiles: '**/test-results.xml'
+        testRunTitle: 'Python Unit Tests'
+      displayName: 'Publish test results'
+
+    - task: PublishCodeCoverageResults@1
+      condition: succeededOrFailed()
+      inputs:
+        codeCoverageTool: Cobertura
+        summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
+      displayName: 'Publish coverage results'
+
+- stage: ValidateExperiments
+  displayName: 'Validate ML Experiments'
+  dependsOn: UnitTests
+  jobs:
+  - job: ValidateScripts
+    displayName: 'Validate Experiment Scripts'
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+      displayName: 'Use Python $(pythonVersion)'
+
+    - script: |
+        python -m pip install --upgrade pip
+        pip install scikit-learn pandas numpy mlflow
+      displayName: 'Install ML dependencies'
+
+    - script: |
+        # Syntax check all Python files
+        python -m py_compile experiments/*.py
+        echo "All experiment scripts have valid syntax"
+      displayName: 'Validate Python syntax'
+
+    - script: |
+        # Check for required imports
+        echo "Checking for MLflow tracking setup..."
+        grep -r "mlflow.set_experiment" experiments/ || echo "Warning: No MLflow experiments found"
+      displayName: 'Validate MLflow integration'

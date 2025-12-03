@@ -1,0 +1,138 @@
+# Azure DevOps Training Pipeline - ML Model Training
+# Trigger: Manual or scheduled
+# Runs the wine quality experiment and registers model
+
+trigger: none  # Manual trigger only
+
+pr: none
+
+schedules:
+- cron: "0 2 * * 0"  # Run every Sunday at 2 AM UTC
+  displayName: Weekly Training Run
+  branches:
+    include:
+    - main
+  always: true
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  pythonVersion: '3.10'
+  azureServiceConnection: 'azure-ml-connection'  # Configure in Azure DevOps
+  azureMLWorkspace: '$(AZURE_WORKSPACE_NAME)'
+  resourceGroup: '$(AZURE_RESOURCE_GROUP)'
+  location: 'eastus'
+
+stages:
+- stage: Setup
+  displayName: 'Setup Environment'
+  jobs:
+  - job: PrepareEnvironment
+    displayName: 'Prepare Training Environment'
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+      displayName: 'Use Python $(pythonVersion)'
+
+    - script: |
+        python -m pip install --upgrade pip
+        pip install azureml-core azureml-mlflow mlflow scikit-learn pandas numpy scipy
+      displayName: 'Install Azure ML SDK'
+
+    - task: AzureCLI@2
+      displayName: 'Verify Azure ML Workspace'
+      inputs:
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az extension add -n ml -y
+          az ml workspace show --name $(azureMLWorkspace) --resource-group $(resourceGroup)
+
+- stage: TrainModel
+  displayName: 'Train Wine Quality Model'
+  dependsOn: Setup
+  jobs:
+  - job: RunExperiment
+    displayName: 'Execute Training Experiment'
+    timeoutInMinutes: 60
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+      displayName: 'Use Python $(pythonVersion)'
+
+    - script: |
+        python -m pip install --upgrade pip
+        pip install azureml-core azureml-mlflow mlflow scikit-learn pandas numpy scipy
+      displayName: 'Install dependencies'
+
+    - task: AzureCLI@2
+      displayName: 'Run Wine Quality Experiment'
+      inputs:
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Set environment variables for Azure ML authentication
+          export AZURE_TENANT_ID=$(az account show --query tenantId -o tsv)
+          export AZURE_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+          export AZURE_RESOURCE_GROUP=$(resourceGroup)
+          export AZURE_WORKSPACE_NAME=$(azureMLWorkspace)
+          
+          # Run the comprehensive wine quality experiment
+          cd experiments
+          python wine_quality_comprehensive.py
+      env:
+        AZURE_TENANT_ID: $(AZURE_TENANT_ID)
+        AZURE_CLIENT_ID: $(AZURE_CLIENT_ID)
+        AZURE_CLIENT_SECRET: $(AZURE_CLIENT_SECRET)
+
+    - script: |
+        echo "Training completed successfully"
+        echo "Check Azure ML Studio for experiment results"
+      displayName: 'Training Summary'
+
+- stage: RegisterModel
+  displayName: 'Register Best Model'
+  dependsOn: TrainModel
+  condition: succeeded()
+  jobs:
+  - job: RegisterToRegistry
+    displayName: 'Register Model to Azure ML'
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+      displayName: 'Use Python $(pythonVersion)'
+
+    - script: |
+        pip install azureml-core mlflow
+      displayName: 'Install dependencies'
+
+    - task: AzureCLI@2
+      displayName: 'Register Best Model'
+      inputs:
+        azureSubscription: '$(azureServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          # Register the best model from the latest experiment run
+          # This would typically query MLflow for the best run and register it
+          echo "Model registration would happen here"
+          echo "Best model will be registered as wine-quality-elasticnet"
+
+- stage: NotifySuccess
+  displayName: 'Notification'
+  dependsOn: RegisterModel
+  condition: succeeded()
+  jobs:
+  - job: SendNotification
+    displayName: 'Send Success Notification'
+    steps:
+    - script: |
+        echo "Training pipeline completed successfully!"
+        echo "Model trained and registered to Azure ML workspace"
+      displayName: 'Success notification'

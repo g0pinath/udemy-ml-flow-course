@@ -1,3 +1,4 @@
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
 type: command
 name: register_wine_quality_model
 display_name: Register Wine Quality Model
