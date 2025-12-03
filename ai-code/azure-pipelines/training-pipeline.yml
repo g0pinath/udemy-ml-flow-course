@@ -81,7 +81,7 @@ stages:
         export AZURE_WORKSPACE_NAME=$(AZURE_WORKSPACE_NAME)
         
         # Run the comprehensive wine quality experiment
-        python experiments/wine_quality_comprehensive.py
+        python ai-code/experiments/wine_quality_comprehensive.py
       displayName: 'Run Wine Quality Experiment'
 
     - script: |
